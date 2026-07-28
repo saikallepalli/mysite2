@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DRF Centre Visit Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #1F3864;
+    --navy-light: #2E5090;
+    --gold: #B8860B;
+    --green: #2E7D32;
+    --amber: #C77700;
+    --red: #B00020;
+    --grey: #8A8A8A;
+    --bg: #F5F6F8;
+    --card-bg: #FFFFFF;
+    --border: #E1E4E8;
+    --text: #1A1A1A;
+    --text-muted: #6B7280;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 60px; }
+  header.top {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    color: #fff;
+    padding: 22px 28px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 14px rgba(31,56,100,0.25);
+  }
+  header.top h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
+  header.top p { margin: 0; font-size: 13px; opacity: 0.85; }
+
+  .filters {
+    display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 18px;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
+  .filter-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  select {
+    padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 14px; background: #fff; color: var(--text); min-width: 220px;
+  }
+  button.reset {
+    padding: 9px 16px; border-radius: 8px; border: 1px solid var(--navy); background: #fff;
+    color: var(--navy); font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+  button.reset:hover { background: var(--navy); color: #fff; }
+  .badge {
+    margin-left: auto; font-size: 13px; color: var(--text-muted); align-self: center;
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin-bottom: 6px; }
+  .card .value { font-size: 26px; font-weight: 800; color: var(--navy); }
+  .card .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .panel {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px; margin-bottom: 20px;
+  }
+  .panel h2 {
+    margin: 0 0 4px; font-size: 17px; color: var(--navy); border-bottom: 2px solid var(--navy);
+    padding-bottom: 8px;
+  }
+  .panel .desc { font-size: 12.5px; color: var(--text-muted); margin: 6px 0 16px; }
+
+  .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .section-grid { grid-template-columns: 1fr; } .cards { grid-template-columns: 1fr 1fr; } }
+
+  table.spotlight { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.spotlight th, table.spotlight td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  table.spotlight th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+  table.spotlight tr:hover { background: #FAFAFB; }
+  .sec-tag {
+    display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; color: #fff;
+  }
+  .bar-cell { position: relative; background: #EDEFF2; border-radius: 6px; height: 18px; overflow: hidden; width: 140px; }
+  .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--amber); border-radius: 6px; }
+  .ni-pct { font-weight: 700; }
+
+  .reflections { max-height: 640px; overflow-y: auto; padding-right: 6px; }
+  .refl-card {
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; background: #FCFCFD;
+  }
+  .refl-card .meta { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+  .refl-card .meta .centre { color: var(--navy); font-weight: 800; }
+  .qa { margin-bottom: 8px; }
+  .qa .q { font-size: 12px; font-weight: 700; color: var(--gold); }
+  .qa .a { font-size: 13.5px; margin-top: 2px; line-height: 1.45; }
+  .empty-note { color: var(--text-muted); font-size: 13px; font-style: italic; padding: 10px 0; }
+
+  .chart-box { position: relative; height: 300px; }
+  .legend-row { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+  .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Unannounced Monthly Centre Visit — Interactive Dashboard</h1>
+    <p>Second Level Manager field audits · 1–21 July 2026 · Filter by manager or centre to drill into checklist compliance and field reflections</p>
+  </header>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label for="managerSel">Second Level Manager</label>
+      <select id="managerSel"></select>
+    </div>
+    <div class="filter-group">
+      <label for="centreSel">Centre</label>
+      <select id="centreSel"></select>
+    </div>
+    <button class="reset" id="resetBtn">Reset filters</button>
+    <div class="badge" id="scopeBadge"></div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="label">Visits in view</div><div class="value" id="cardVisits">-</div><div class="sub" id="cardVisitsSub">&nbsp;</div></div>
+    <div class="card"><div class="label">Overall % Need Improvement</div><div class="value" id="cardNI">-</div><div class="sub" id="cardNISub">&nbsp;</div></div>
+    <div class="card"><div class="label">Weakest section</div><div class="value" id="cardWeakSection" style="font-size:18px;">-</div><div class="value" id="cardWeakPct" style="margin-top:2px;">-</div><div class="sub" id="cardWeakSectionSub">&nbsp;</div></div>
+    <div class="card"><div class="label">Top gap item</div><div class="value" id="cardTopItem" style="font-size:14px; line-height:1.3;">-</div><div class="sub" id="cardTopItemSub">&nbsp;</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Section-Wise Compliance — Need Improvement Focus</h2>
+    <div class="desc">Percentage of applicable checklist items flagged “Need Improvement” within each of the four audit sections, for the visits currently in view.</div>
+    <div class="section-grid">
+      <div class="chart-box"><canvas id="sectionBarChart"></canvas></div>
+      <div style="display:flex; flex-direction:column; height:300px;">
+        <div style="position:relative; flex:1 1 auto; min-height:0;"><canvas id="sectionStackChart"></canvas></div>
+        <div class="legend-row" style="justify-content:flex-end; flex:0 0 auto; margin-top:6px;">
+          <span><span class="legend-dot" style="background:var(--green)"></span>All is Well</span>
+          <span><span class="legend-dot" style="background:var(--amber)"></span>Need Improvement</span>
+          <span><span class="legend-dot" style="background:var(--grey)"></span>Not Applicable</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Need Improvement Spotlight</h2>
+    <div class="desc">Individual checklist items ranked by how often they were flagged “Need Improvement” for the visits currently in view.</div>
+    <table class="spotlight">
+      <thead><tr><th>Section</th><th>Checklist Item</th><th>Need Improvement</th><th>% of Applicable</th></tr></thead>
+      <tbody id="spotlightBody"></tbody>
+    </table>
+    <div id="spotlightEmpty" class="empty-note" style="display:none;">No “Need Improvement” flags for this selection — clean sheet.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Field Reflections — Focus Areas</h2>
+    <div class="desc">SLM responses to the three reflective questions, for the visits currently in view: (1) key bottleneck resolved, (2) action to improve placement %, (3) action to help the batch start on time.</div>
+    <div class="reflections" id="reflectionsContainer"></div>
+  </div>
+
+  <div style="text-align:center; color:var(--text-muted); font-size:11.5px; margin-top:10px;">
+    Data source: DRF Unannounced Monthly Centre Visit Google Form responses (41 visits, 9 SLMs, 1–21 Jul 2026)
+  </div>
+</div>
+
+<script id="dashboard-data" type="application/json">__DATA_JSON__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
+const SECTION_ORDER = ["Data Check", "Infra Check", "Process Check", "Aspirant Interaction"];
+const SECTION_COLORS = {
+  "Data Check": "#1F3864",
+  "Infra Check": "#2E7D32",
+  "Process Check": "#C77700",
+  "Aspirant Interaction": "#7B1FA2"
+};
+
+const managerSel = document.getElementById('managerSel');
+const centreSel = document.getElementById('centreSel');
+
+// Build manager -> centres map
+const managerCentres = {};
+DATA.visits.forEach(v => {
+  if (!managerCentres[v.manager]) managerCentres[v.manager] = new Set();
+  managerCentres[v.manager].add(v.centre);
+});
+const allManagers = Object.keys(managerCentres).sort();
+const allCentres = Array.from(new Set(DATA.visits.map(v => v.centre))).sort();
+
+function populateManagerSelect() {
+  managerSel.innerHTML = '<option value="__ALL__">All Managers (' + allManagers.length + ')</option>' +
+    allManagers.map(m => `<option value="${m}">${m} (${managerCentres[m].size})</option>`).join('');
+}
+function populateCentreSelect(filterManager) {
+  let centres;
+  if (filterManager && filterManager !== '__ALL__') {
+    centres = Array.from(managerCentres[filterManager]).sort();
+  } else {
+    centres = allCentres;
+  }
+  const current = centreSel.value;
+  centreSel.innerHTML = '<option value="__ALL__">All Centres (' + centres.length + ')</option>' +
+    centres.map(c => `<option value="${c}">${c}</option>`).join('');
+  if (centres.includes(current)) centreSel.value = current;
+}
+
+populateManagerSelect();
+populateCentreSelect('__ALL__');
+
+let sectionBarChart, sectionStackChart;
+
+function getFilteredVisits() {
+  const m = managerSel.value;
+  const c = centreSel.value;
+  return DATA.visits.filter(v => (m === '__ALL__' || v.manager === m) && (c === '__ALL__' || v.centre === c));
+}
+
+function fmtPct(n) { return isFinite(n) ? n.toFixed(1) + '%' : '—'; }
+
+function render() {
+  const visits = getFilteredVisits();
+  const scopeParts = [];
+  if (managerSel.value !== '__ALL__') scopeParts.push(managerSel.value);
+  if (centreSel.value !== '__ALL__') scopeParts.push(centreSel.value);
+  document.getElementById('scopeBadge').textContent = scopeParts.length ? 'Viewing: ' + scopeParts.join(' → ') : 'Viewing: All managers, all centres';
+
+  // Section aggregates
+  const sectionAgg = {};
+  SECTION_ORDER.forEach(s => sectionAgg[s] = { aw: 0, ni: 0, na: 0 });
+  // Item aggregates keyed by section|label
+  const itemAgg = {};
+
+  visits.forEach(v => {
+    v.items.forEach(it => {
+      const sec = sectionAgg[it.section];
+      if (!sec) return;
+      if (it.status === 'All is Well') sec.aw++;
+      else if (it.status === 'Need Improvement') sec.ni++;
+      else sec.na++;
+
+      const key = it.section + '|||' + it.label;
+      if (!itemAgg[key]) itemAgg[key] = { section: it.section, label: it.label, aw: 0, ni: 0, na: 0 };
+      if (it.status === 'All is Well') itemAgg[key].aw++;
+      else if (it.status === 'Need Improvement') itemAgg[key].ni++;
+      else itemAgg[key].na++;
+    });
+  });
+
+  // Cards
+  document.getElementById('cardVisits').textContent = visits.length;
+  const distinctCentres = new Set(visits.map(v => v.centre)).size;
+  const distinctManagers = new Set(visits.map(v => v.manager)).size;
+  document.getElementById('cardVisitsSub').textContent = distinctCentres + ' centre(s), ' + distinctManagers + ' manager(s)';
+
+  let totalAw = 0, totalNi = 0, totalNa = 0;
+  SECTION_ORDER.forEach(s => { totalAw += sectionAgg[s].aw; totalNi += sectionAgg[s].ni; totalNa += sectionAgg[s].na; });
+  const totalItemsOverall = totalAw + totalNi + totalNa;
+  const overallPct = totalAw + totalNi > 0 ? (100 * totalNi / (totalAw + totalNi)) : NaN;
+  document.getElementById('cardNI').textContent = fmtPct(overallPct);
+  document.getElementById('cardNISub').textContent = totalItemsOverall > 0
+    ? `Of ${totalItemsOverall} checklist items: ${totalNi} Need Improvement, ${totalNa} Not Applicable.`
+    : 'no data for this selection';
+
+  let weakestSection = null, weakestPct = -1;
+  SECTION_ORDER.forEach(s => {
+    const app = sectionAgg[s].aw + sectionAgg[s].ni;
+    const pct = app > 0 ? 100 * sectionAgg[s].ni / app : -1;
+    if (pct > weakestPct) { weakestPct = pct; weakestSection = s; }
+  });
+  document.getElementById('cardWeakSection').textContent = weakestSection || '—';
+  if (weakestSection) {
+    const ws = sectionAgg[weakestSection];
+    const wsTotal = ws.aw + ws.ni + ws.na;
+    document.getElementById('cardWeakPct').textContent = fmtPct(weakestPct);
+    document.getElementById('cardWeakSectionSub').textContent =
+      `Of ${wsTotal} items in this section: ${ws.ni} Need Improvement, ${ws.na} Not Applicable.`;
+  } else {
+    document.getElementById('cardWeakPct').textContent = '—';
+    document.getElementById('cardWeakSectionSub').textContent = 'no applicable data';
+  }
+
+  const itemList = Object.values(itemAgg).map(it => {
+    const app = it.aw + it.ni;
+    return { ...it, app, pct: app > 0 ? 100 * it.ni / app : -1 };
+  }).filter(it => it.ni > 0).sort((a, b) => b.ni - a.ni || b.pct - a.pct);
+
+  if (itemList.length) {
+    document.getElementById('cardTopItem').textContent = itemList[0].label.length > 70 ? itemList[0].label.slice(0, 68) + '…' : itemList[0].label;
+    document.getElementById('cardTopItemSub').textContent = itemList[0].ni + ' of ' + itemList[0].app + ' visits (' + fmtPct(itemList[0].pct) + ') — ' + itemList[0].section;
+  } else {
+    document.getElementById('cardTopItem').textContent = 'None';
+    document.getElementById('cardTopItemSub').textContent = 'No Need Improvement flags in this view';
+  }
+
+  // Charts
+  const barLabels = SECTION_ORDER;
+  const barData = SECTION_ORDER.map(s => {
+    const app = sectionAgg[s].aw + sectionAgg[s].ni;
+    return app > 0 ? +(100 * sectionAgg[s].ni / app).toFixed(1) : 0;
+  });
+  const barColors = SECTION_ORDER.map(s => SECTION_COLORS[s]);
+
+  if (sectionBarChart) sectionBarChart.destroy();
+  sectionBarChart = new Chart(document.getElementById('sectionBarChart'), {
+    type: 'bar',
+    data: { labels: barLabels, datasets: [{ label: '% Need Improvement', data: barData, backgroundColor: barColors, borderRadius: 6 }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, title: { display: true, text: '% Need Improvement by Section', font: { size: 13 } } },
+      scales: { x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+    }
+  });
+
+  const stackLabels = SECTION_ORDER.map(s => {
+    const t = sectionAgg[s].aw + sectionAgg[s].ni + sectionAgg[s].na;
+    return `${s} (${t})`;
+  });
+
+  if (sectionStackChart) sectionStackChart.destroy();
+  sectionStackChart = new Chart(document.getElementById('sectionStackChart'), {
+    type: 'bar',
+    data: {
+      labels: stackLabels,
+      datasets: [
+        { label: 'All is Well', data: SECTION_ORDER.map(s => sectionAgg[s].aw), backgroundColor: '#2E7D32', stack: 's' },
+        { label: 'Need Improvement', data: SECTION_ORDER.map(s => sectionAgg[s].ni), backgroundColor: '#C77700', stack: 's' },
+        { label: 'Not Applicable', data: SECTION_ORDER.map(s => sectionAgg[s].na), backgroundColor: '#B9BDC3', stack: 's' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, title: { display: true, text: 'Item Counts by Section (stacked)', font: { size: 13 } } },
+      scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+    }
+  });
+
+  // Spotlight table
+  const tbody = document.getElementById('spotlightBody');
+  const emptyNote = document.getElementById('spotlightEmpty');
+  const top = itemList.slice(0, 15);
+  if (!top.length) {
+    tbody.innerHTML = '';
+    emptyNote.style.display = 'block';
+  } else {
+    emptyNote.style.display = 'none';
+    tbody.innerHTML = top.map(it => `
+      <tr>
+        <td><span class="sec-tag" style="background:${SECTION_COLORS[it.section]}">${it.section}</span></td>
+        <td>${it.label}</td>
+        <td class="ni-pct">${it.ni} / ${it.app}</td>
+        <td>
+          <div class="bar-cell"><div class="bar-fill" style="width:${Math.max(it.pct,0)}%"></div></div>
+          <span style="font-size:11.5px; color:var(--text-muted);">${fmtPct(it.pct)}</span>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Reflections
+  const container = document.getElementById('reflectionsContainer');
+  if (!visits.length) {
+    container.innerHTML = '<div class="empty-note">No visits match this selection.</div>';
+  } else {
+    container.innerHTML = visits
+      .slice()
+      .sort((a, b) => a.centre.localeCompare(b.centre))
+      .map(v => `
+        <div class="refl-card">
+          <div class="meta"><span class="centre">${v.centre}</span> · ${v.program || ''} · ${v.manager} · ${v.date}</div>
+          ${qaBlock('Key bottleneck resolved', v.q_bottleneck)}
+          ${qaBlock('Action to improve placement %', v.q_placement)}
+          ${qaBlock('Action to help batch start on time', v.q_batch_ontime)}
+        </div>
+      `).join('');
+  }
+}
+
+function qaBlock(q, a) {
+  const text = (a && a.trim()) ? escapeHtml(a) : '<span style="color:var(--text-muted); font-style:italic;">Not answered</span>';
+  return `<div class="qa"><div class="q">${q}</div><div class="a">${text}</div></div>`;
+}
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+managerSel.addEventListener('change', () => {
+  populateCentreSelect(managerSel.value);
+  centreSel.value = '__ALL__';
+  render();
+});
+centreSel.addEventListener('change', render);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  managerSel.value = '__ALL__';
+  populateCentreSelect('__ALL__');
+  centreSel.value = '__ALL__';
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
